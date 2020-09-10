@@ -24,6 +24,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   gen_lang: ^0.1.3
+
   flutter:
     sdk: flutter
 
@@ -33,7 +34,6 @@ dependencies:
   cupertino_icons: ^0.1.3
 
 dev_dependencies:
-  gen_lang: 0.1.3
   flutter_test:
     sdk: flutter
 

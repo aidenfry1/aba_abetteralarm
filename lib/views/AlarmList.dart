@@ -1,3 +1,7 @@
+import 'package:aba/constants/Styles.dart';
+import 'package:aba/dao/AlarmDao.dart';
+import 'package:aba/dao/DaysDao.dart';
+import 'package:aba/dao/objects/AlarmData.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -8,145 +12,167 @@ class AlarmList extends StatefulWidget {
 }
 
 class _State extends State<AlarmList> with TickerProviderStateMixin {
+  TextEditingController _editingController;
   @override
   void initState() {
+    _editingController = new TextEditingController();
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-        padding: EdgeInsets.all(8),
-        itemBuilder: (context, i) {
-          if (i.isOdd)
-            return Divider(
-              color: Color(0xFF4E1EEB),
-            );
+    return ListView.builder(itemBuilder: (context, i) {
+      if (i.isOdd)
+        return Divider(
+          color: Color(0xFF4E1EEB),
+        );
 
-          final index = i ~/ 2;
+      final index = i ~/ 2;
 
-          if (index < testListOfAlarms.length) {
-            return _buildRow(testListOfAlarms[index]);
-          }
-          return null;
-        });
+      if (index < AlarmDao.getAlarms().length) {
+        return _buildRow(AlarmDao.getAlarms()[index]);
+      }
+      return null;
+    });
   }
 
-  Widget _buildRow(AlarmData data) {
+  Widget _buildRow(AlarmData alarm) {
     return ExpansionTile(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(children: <Widget>[
-            Text("6:00", style: myAlarmTextStyle),
-            Switch(
-              value: data.isActive,
-              onChanged: (value) {
-                setState(() {
-                  data.isActive = value;
-                });
-              },
-              inactiveTrackColor: Colors.white30,
-//              activeColor: Colors.green,
-            ),
-          ], mainAxisAlignment: MainAxisAlignment.spaceBetween),
-        ],
-      ),
-      subtitle: Wrap(
-        spacing: 4, // set spacing here
-        children: <Widget>[
-          CircleAvatar(
-            radius: 15,
-            backgroundColor: Color.fromARGB(255, 132, 101, 235),
-            child: CircleAvatar(
-              radius: 14,
-              backgroundColor: Color.fromARGB(255, 36, 14, 107),
-              child: Center(
-                child: Text("M", style: myDaysTextStyle),
-              ),
-            ),
-          ),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: new BoxDecoration(
-              borderRadius: new BorderRadius.all(new Radius.circular(50.0)),
-              border: new Border.all(
-                color: Color.fromARGB(255, 132, 101, 235),
-                width: 1.0,
-              ),
-            ),
-            child: Center(
-              child: Text("T", style: myDaysTextStyle),
-            ),
-          ),
-          Text("T", style: myDaysTextStyle),
-          Text("W", style: myDaysTextStyle),
-          Text("T", style: myDaysTextStyle),
-          Text("F", style: myDaysTextStyle),
-          Text("S", style: myDaysTextStyle),
-          Text("S", style: myDaysTextStyle),
-        ],
-      ),
-      children: <Widget>[
-        Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        title: Padding(
+            padding: EdgeInsets.all(6),
             child: Column(
               children: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    Text("Sound", style: myDaysTextStyle),
-                    Text("Oxygen", style: myDaysTextStyle)
-                  ],
-                ),
-                Divider(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    Text("Label", style: myDaysTextStyle),
-                    Text(data.label, style: myDaysTextStyle)
-                  ],
-                ),
-                Divider(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    Text("Delete", style: myDaysTextStyle),
-                    Text("Skip ", style: myDaysTextStyle),
-                  ],
-                ),
+                Row(children: <Widget>[
+                  GestureDetector(
+                      onTap: () {
+                        showTimePicker(
+                          initialTime: alarm.time,
+                          context: context,
+                        ).then((value) => setState(() {
+                              if (value != null) {
+                                alarm.time = value;
+                              }
+                            }));
+                      },
+                      child: Text(
+                        alarm.time.format(context),
+                        style: Styles.MyAlarmTextStyle,
+                      )),
+                  Switch(
+                    value: alarm.enabled,
+                    onChanged: (value) {
+                      setState(() {
+                        alarm.enabled = value;
+                      });
+                    },
+                    inactiveTrackColor: Colors.white30,
+//              activeColor: Colors.green,
+                  ),
+                ], mainAxisAlignment: MainAxisAlignment.spaceBetween),
               ],
-            ))
-      ],
-    );
+            )),
+        subtitle: Padding(
+            padding: EdgeInsets.all(6),
+            child: Wrap(
+              spacing: 4,
+              alignment: WrapAlignment.spaceBetween,
+              children: DaysDao.daysOfTheWeek
+                  .map<Widget>((day) => GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            alarm.switchStateOfDay(day);
+                          });
+                        },
+                        child: CircleAvatar(
+                            radius: 17,
+                            backgroundColor: Styles.MyLighterAccent,
+                            child: CircleAvatar(
+                              radius: 16,
+                              backgroundColor: alarm.enabled
+                                  ? (alarm.isActiveForDay(day)
+                                      ? Styles.MyLighterAccent
+                                      : Styles.MyBackgroundColor)
+                                  : (alarm.isActiveForDay(day)
+                                      ? Colors.grey
+                                      : Color.fromARGB(255, 36, 14, 107)),
+                              child: Center(
+                                child: Text(day.shortDay,
+                                    style: Styles.MyDaysTextStyle),
+                              ),
+                            )),
+                      ))
+                  .toList(),
+            )),
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+            child: Column(children: <Widget>[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Text("Sound", style: Styles.MyDaysTextStyle),
+                  Text("Oxygen", style: Styles.MyDaysTextStyle)
+                ],
+              ),
+              Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Text("Label", style: Styles.MyDaysTextStyle),
+                  GestureDetector(
+                      child: Text(alarm.label, style: Styles.MyDaysTextStyle),
+                      onTap: () {
+                        showLabelEditDialog(alarm);
+                      })
+                ],
+              ),
+              Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Text("Delete", style: Styles.MyDaysTextStyle),
+                  Text("Skip ", style: Styles.MyDaysTextStyle),
+                ],
+              ),
+            ]),
+          ),
+        ]);
+  }
+
+  void showLabelEditDialog(AlarmData alarm) {
+    _editingController.text = alarm.label;
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return SimpleDialog(
+            title: Text("Set Label", style: Styles.MyDaysTextStyle),
+            backgroundColor: Styles.MyBackgroundColor,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
+                child: new TextField(
+                  onSubmitted: (newValue) {
+                    setState(() {
+                      alarm.label = newValue;
+                    });
+                    Navigator.pop(context);
+                  },
+                  autofocus: true,
+                  controller: _editingController,
+                  style: Styles.MyDaysTextStyle,
+                  cursorColor: Styles.MyLighterAccent,
+                  keyboardType: TextInputType.text,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                      suffixIcon: IconButton(
+                    onPressed: () => _editingController.clear(),
+                    icon: Icon(Icons.clear),
+                    color: Colors.white,
+                  )),
+                ),
+              )
+            ],
+          );
+        });
   }
 }
-
-final myAlarmTextStyle = TextStyle(color: Colors.white, fontSize: 24);
-
-final myDaysTextStyle = TextStyle(color: Colors.white, fontSize: 20);
-
-class AlarmData {
-  String label;
-  TimeOfDay time;
-  bool repeatMon,
-      repeatTues,
-      repeatWeds,
-      repeatThurs,
-      repeatFri,
-      repeatSat,
-      repeatSun;
-  bool isActive = true;
-  bool isExpanded = true;
-  String sound;
-
-  AlarmData({this.label});
-}
-
-List<AlarmData> testListOfAlarms = ({
-  AlarmData(label: "One"),
-  AlarmData(label: "Two"),
-  AlarmData(label: "Three"),
-  AlarmData(label: "Four"),
-}).toList();
