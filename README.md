@@ -1,6 +1,6 @@
 # ABA - A Better Alarm
 
-A new Flutter application.
+A FLutter Alarm which will rock the world. OK end of musical theatre references here.
 
 ## Getting Started
 
