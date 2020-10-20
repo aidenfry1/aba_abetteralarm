@@ -1,5 +1,8 @@
 {
   "appTitleLong":"ABA: A Better Alarm",
-  "appTitleShort":"ABA"
+  "appTitleShort":"ABA",
+
+
+  "skipAll": "Skip All"
 
 }
