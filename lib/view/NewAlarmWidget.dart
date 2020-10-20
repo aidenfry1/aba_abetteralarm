@@ -1,32 +1,29 @@
 import 'package:aba/constants/Styles.dart';
-import 'package:aba/dao/AlarmDao.dart';
-import 'package:aba/dao/objects/AlarmData.dart';
+import 'package:aba/model/Alarm.dart';
+import 'package:aba/repository/alarm_repository.dart';
+import 'package:aba/screen/main_activity.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class NewAlarmWidget extends StatefulWidget {
+class NewAlarmWidget extends ConsumerWidget {
   @override
-  _State createState() => _State();
-}
+  Widget build(BuildContext context, ScopedReader watch) {
+    final alarmChangeNotifier = watch(alarmChangeNotifierProvider);
+    TextEditingController _editingController;
 
-class _State extends State<NewAlarmWidget> {
-  TextEditingController _editingController;
-
-  @override
-  void initState() {
-    _editingController = new TextEditingController();
-    super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return FloatingActionButton(
-        onPressed: showLabelEditDialog,
+        onPressed: () => showLabelEditDialog(
+            context, _editingController, alarmChangeNotifier),
+//        onPressed: () => {alarmChangeNotifier.add(new Alarm(label: "test"))},
         backgroundColor: Styles.MyLighterAccent,
         child: Icon(Icons.add));
   }
 
-  void showLabelEditDialog() {
-    AlarmData alarm = new AlarmData(label: "Default");
+  void showLabelEditDialog(
+      BuildContext context,
+      TextEditingController editingController,
+      AlarmChangeNotifier alarmChangeNotifier) {
+    Alarm alarm = new Alarm(label: "Default");
 
     showDialog(
         context: context,
@@ -42,14 +39,14 @@ class _State extends State<NewAlarmWidget> {
                     alarm.label = newValue;
                   },
                   autofocus: true,
-                  controller: _editingController,
+                  controller: editingController,
                   style: Styles.MyDaysTextStyle,
                   cursorColor: Styles.MyLighterAccent,
                   keyboardType: TextInputType.text,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
                       suffixIcon: IconButton(
-                    onPressed: () => _editingController.clear(),
+                    onPressed: () => editingController.clear(),
                     icon: Icon(Icons.clear),
                     color: Colors.white,
                   )),
@@ -60,11 +57,10 @@ class _State extends State<NewAlarmWidget> {
                     showTimePicker(
                       initialTime: alarm.time,
                       context: context,
-                    ).then((value) => setState(() {
-                          if (value != null) {
-                            alarm.time = value;
-                          }
-                        }));
+                      initialEntryMode: TimePickerEntryMode.dial,
+                    ).then((value) => {
+                          if (value != null) {alarm.time = value}
+                        });
                   },
                   child: Text(
                     alarm.time.format(context),
@@ -73,12 +69,15 @@ class _State extends State<NewAlarmWidget> {
               FlatButton(
                 child: Text("OK"),
                 onPressed: () {
-                  AlarmDao.addAlarm(alarm);
-                  Navigator.pop(context);
+                  Navigator.pop(context, alarm);
                 },
               )
             ],
           );
-        });
+        }).then((value) {
+      if (value != null) {
+        alarmChangeNotifier.add(value);
+      }
+    });
   }
 }

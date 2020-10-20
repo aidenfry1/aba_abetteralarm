@@ -1,26 +1,21 @@
+import 'dart:collection';
+
 import 'package:aba/constants/Styles.dart';
-import 'package:aba/dao/AlarmDao.dart';
-import 'package:aba/dao/DaysDao.dart';
-import 'package:aba/dao/objects/AlarmData.dart';
+import 'package:aba/model/Alarm.dart';
+import 'package:aba/repository/weekdays_repository.dart';
+import 'package:aba/screen/main_activity.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AlarmList extends StatefulWidget {
+class AlarmList extends ConsumerWidget {
   @override
-  _State createState() => _State();
-}
+  Widget build(BuildContext context, ScopedReader watch) {
+    TextEditingController _editingController = new TextEditingController();
 
-class _State extends State<AlarmList> with TickerProviderStateMixin {
-  TextEditingController _editingController;
-  @override
-  void initState() {
-    _editingController = new TextEditingController();
-    super.initState();
-  }
+    final alarmChangeNotifier = watch(alarmChangeNotifierProvider);
 
-  @override
-  Widget build(BuildContext context) {
     return ListView.builder(itemBuilder: (context, i) {
       if (i.isOdd)
         return Divider(
@@ -29,14 +24,28 @@ class _State extends State<AlarmList> with TickerProviderStateMixin {
 
       final index = i ~/ 2;
 
-      if (index < AlarmDao.getAlarms().length) {
-        return _buildRow(AlarmDao.getAlarms()[index]);
+      UnmodifiableListView<Alarm> alarms = alarmChangeNotifier.alarms;
+
+      if (index < alarms.length) {
+        return new AlarmRow(
+            alarm: alarms[index], editingController: _editingController);
       }
       return null;
     });
   }
+}
 
-  Widget _buildRow(AlarmData alarm) {
+class AlarmRow extends ConsumerWidget {
+  final Alarm alarm;
+  final TextEditingController editingController;
+
+  AlarmRow({this.alarm, this.editingController});
+
+  @override
+  Widget build(BuildContext context,
+      T Function<T>(ProviderBase<Object, T> provider) watch) {
+    final alarmChangeNotifier = watch(alarmChangeNotifierProvider);
+
     return ExpansionTile(
         title: Padding(
             padding: EdgeInsets.all(6),
@@ -48,11 +57,11 @@ class _State extends State<AlarmList> with TickerProviderStateMixin {
                         showTimePicker(
                           initialTime: alarm.time,
                           context: context,
-                        ).then((value) => setState(() {
-                              if (value != null) {
-                                alarm.time = value;
-                              }
-                            }));
+                        ).then((value) {
+                          final Alarm oldAlarm = alarm;
+                          alarm.time = value;
+                          alarmChangeNotifier.update(oldAlarm, alarm);
+                        });
                       },
                       child: Text(
                         alarm.time.format(context),
@@ -61,9 +70,9 @@ class _State extends State<AlarmList> with TickerProviderStateMixin {
                   Switch(
                     value: alarm.enabled,
                     onChanged: (value) {
-                      setState(() {
-                        alarm.enabled = value;
-                      });
+                      final Alarm oldAlarm = alarm;
+                      alarm.enabled = value;
+                      alarmChangeNotifier.update(oldAlarm, alarm);
                     },
                     inactiveTrackColor: Colors.white30,
 //              activeColor: Colors.green,
@@ -76,12 +85,12 @@ class _State extends State<AlarmList> with TickerProviderStateMixin {
             child: Wrap(
               spacing: 4,
               alignment: WrapAlignment.spaceBetween,
-              children: DaysDao.daysOfTheWeek
+              children: WeekDays.daysOfTheWeek
                   .map<Widget>((day) => GestureDetector(
                         onTap: () {
-                          setState(() {
-                            alarm.switchStateOfDay(day);
-                          });
+                          final Alarm oldAlarm = alarm;
+                          alarm.switchStateOfDay(day);
+                          alarmChangeNotifier.update(oldAlarm, alarm);
                         },
                         child: CircleAvatar(
                             radius: 17,
@@ -122,7 +131,44 @@ class _State extends State<AlarmList> with TickerProviderStateMixin {
                   GestureDetector(
                       child: Text(alarm.label, style: Styles.MyDaysTextStyle),
                       onTap: () {
-                        showLabelEditDialog(alarm);
+                        showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return SimpleDialog(
+                                title: Text("Set Label",
+                                    style: Styles.MyDaysTextStyle),
+                                backgroundColor: Styles.MyBackgroundColor,
+                                children: <Widget>[
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(28, 0, 28, 0),
+                                    child: new TextField(
+                                      onSubmitted: (newValue) {
+                                        Navigator.pop(context, newValue);
+                                      },
+                                      autofocus: true,
+                                      controller: editingController,
+                                      style: Styles.MyDaysTextStyle,
+                                      cursorColor: Styles.MyLighterAccent,
+                                      keyboardType: TextInputType.text,
+                                      textCapitalization:
+                                          TextCapitalization.sentences,
+                                      decoration: InputDecoration(
+                                          suffixIcon: IconButton(
+                                        onPressed: () =>
+                                            editingController.clear(),
+                                        icon: Icon(Icons.clear),
+                                        color: Colors.white,
+                                      )),
+                                    ),
+                                  )
+                                ],
+                              );
+                            }).then((value) {
+                          Alarm oldAlarm = alarm;
+                          alarm.label = value;
+                          alarmChangeNotifier.update(oldAlarm, alarm);
+                        });
                       })
                 ],
               ),
@@ -137,42 +183,5 @@ class _State extends State<AlarmList> with TickerProviderStateMixin {
             ]),
           ),
         ]);
-  }
-
-  void showLabelEditDialog(AlarmData alarm) {
-    _editingController.text = alarm.label;
-    showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return SimpleDialog(
-            title: Text("Set Label", style: Styles.MyDaysTextStyle),
-            backgroundColor: Styles.MyBackgroundColor,
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
-                child: new TextField(
-                  onSubmitted: (newValue) {
-                    setState(() {
-                      alarm.label = newValue;
-                    });
-                    Navigator.pop(context);
-                  },
-                  autofocus: true,
-                  controller: _editingController,
-                  style: Styles.MyDaysTextStyle,
-                  cursorColor: Styles.MyLighterAccent,
-                  keyboardType: TextInputType.text,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                      suffixIcon: IconButton(
-                    onPressed: () => _editingController.clear(),
-                    icon: Icon(Icons.clear),
-                    color: Colors.white,
-                  )),
-                ),
-              )
-            ],
-          );
-        });
   }
 }

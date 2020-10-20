@@ -1,8 +1,9 @@
-import 'package:aba/dao/objects/Day.dart';
+import 'package:aba/model/Day.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
 
-class AlarmData {
+class Alarm {
+  int id;
   String label;
   TimeOfDay time = new TimeOfDay(hour: 0, minute: 00);
   bool repeatMon = false,
@@ -15,7 +16,7 @@ class AlarmData {
   bool enabled = true;
   String sound;
 
-  AlarmData({this.label});
+  Alarm({this.label});
 
   bool isActiveForDay(Day day) {
     switch (day.day) {

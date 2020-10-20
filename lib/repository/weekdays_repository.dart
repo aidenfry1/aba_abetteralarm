@@ -1,6 +1,6 @@
-import 'package:aba/dao/objects/Day.dart';
+import 'package:aba/model/Day.dart';
 
-class DaysDao {
+class WeekDays {
   static List<Day> daysOfTheWeek = ({
     new Day(day: "Monday", shortDay: "M"),
     new Day(day: "Tuesday", shortDay: "T"),
